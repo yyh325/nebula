@@ -199,6 +199,14 @@ func (f *Interface) send(t NebulaMessageType, st NebulaMessageSubType, ci *Conne
 	}
 }
 
+func (f *Interface) SendRaw(remote *udpAddr, out []byte) {
+	err := f.outside.WriteTo(out, remote)
+	if err != nil {
+		l.WithError(err).
+			WithField("udpAddr", remote).Error("Failed to write outgoing packet")
+	}
+}
+
 func isMulticast(ip uint32) bool {
 	// Class D multicast
 	if (((ip >> 24) & 0xff) & 0xf0) == 0xe0 {

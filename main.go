@@ -221,7 +221,6 @@ func Main(configPath string, configTest bool, buildVersion string) {
 		//TODO: change to a duration
 		config.GetInt("lighthouse.interval", 10),
 		port,
-		udpServer,
 		punchBack,
 	)
 

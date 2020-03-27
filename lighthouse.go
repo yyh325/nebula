@@ -14,7 +14,6 @@ type LightHouse struct {
 	sync.RWMutex //Because we concurrently read and write to our maps
 	amLighthouse bool
 	myIp         uint32
-	punchConn    *udpConn
 
 	// Local cache of answers from light houses
 	addrMap map[uint32][]udpAddr
@@ -31,9 +30,10 @@ type LightHouse struct {
 type EncWriter interface {
 	SendMessageToVpnIp(t NebulaMessageType, st NebulaMessageSubType, vpnIp uint32, p, nb, out []byte)
 	SendMessageToAll(t NebulaMessageType, st NebulaMessageSubType, vpnIp uint32, p, nb, out []byte)
+	SendRaw(remote *udpAddr, out []byte)
 }
 
-func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort int, pc *udpConn, punchBack bool) *LightHouse {
+func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort int, punchBack bool) *LightHouse {
 	h := LightHouse{
 		amLighthouse: amLighthouse,
 		myIp:         myIp,
@@ -42,7 +42,6 @@ func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, n
 		lighthouses:  make(map[uint32]struct{}),
 		staticList:   make(map[uint32]struct{}),
 		interval:     interval,
-		punchConn:    pc,
 		punchBack:    punchBack,
 	}
 
@@ -324,12 +323,12 @@ func (lh *LightHouse) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []byte, c *c
 			return
 		}
 
-		empty := []byte{0}
+		empty := []byte{42}
 		for _, a := range n.Details.IpAndPorts {
 			vpnPeer := NewUDPAddr(a.Ip, uint16(a.Port))
 			go func() {
 				for i := 0; i < 5; i++ {
-					lh.punchConn.WriteTo(empty, vpnPeer)
+					f.SendRaw(vpnPeer, empty)
 					time.Sleep(time.Second * 1)
 				}
 
