@@ -9,17 +9,17 @@ import (
 )
 
 func TestAllowList_Allow(t *testing.T) {
-	assert.Equal(t, true, ((*AllowList)(nil)).Allow(ip2int(net.ParseIP("1.1.1.1"))))
+	assert.Equal(t, true, ((*AllowList)(nil)).Allow(net.ParseIP("1.1.1.1")))
 
-	tree := NewCIDRTree()
+	tree := NewCIDR6Tree()
 	tree.AddCIDR(getCIDR("0.0.0.0/0"), true)
 	tree.AddCIDR(getCIDR("10.0.0.0/8"), false)
 	tree.AddCIDR(getCIDR("10.42.42.0/24"), true)
 	al := &AllowList{cidrTree: tree}
 
-	assert.Equal(t, true, al.Allow(ip2int(net.ParseIP("1.1.1.1"))))
-	assert.Equal(t, false, al.Allow(ip2int(net.ParseIP("10.0.0.4"))))
-	assert.Equal(t, true, al.Allow(ip2int(net.ParseIP("10.42.42.42"))))
+	assert.Equal(t, true, al.Allow(net.ParseIP("1.1.1.1")))
+	assert.Equal(t, false, al.Allow(net.ParseIP("10.0.0.4")))
+	assert.Equal(t, true, al.Allow(net.ParseIP("10.42.42.42")))
 }
 
 func TestAllowList_AllowName(t *testing.T) {

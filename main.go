@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -256,7 +254,7 @@ func Main(config *Config, configTest bool, buildVersion string, logger *logrus.L
 		lighthouseHosts,
 		//TODO: change to a duration
 		config.GetInt("lighthouse.interval", 10),
-		port,
+		uint32(port),
 		udpConns[0],
 		punchy.Respond,
 		punchy.Delay,
@@ -284,28 +282,19 @@ func Main(config *Config, configTest bool, buildVersion string, logger *logrus.L
 		vals, ok := v.([]interface{})
 		if ok {
 			for _, v := range vals {
-				parts := strings.Split(fmt.Sprintf("%v", v), ":")
-				addr, err := net.ResolveIPAddr("ip", parts[0])
+				ip, port, err := parseIPAndPort(fmt.Sprintf("%v", v))
 				if err == nil {
-					ip := addr.IP
-					port, err := strconv.Atoi(parts[1])
-					if err != nil {
-						return nil, NewContextualError("Static host address could not be parsed", m{"vpnIp": vpnIp}, err)
-					}
-					lightHouse.AddRemote(ip2int(vpnIp), NewUDPAddr(ip2int(ip), uint16(port)), true)
+					lightHouse.AddRemote(ip2int(vpnIp), NewUDPAddr(ip, port), true)
+				} else {
+					return nil, NewContextualError("Static host address could not be parsed", m{"vpnIp": vpnIp}, err)
 				}
 			}
 		} else {
-			//TODO: make this all a helper
-			parts := strings.Split(fmt.Sprintf("%v", v), ":")
-			addr, err := net.ResolveIPAddr("ip", parts[0])
+			ip, port, err := parseIPAndPort(fmt.Sprintf("%v", v))
 			if err == nil {
-				ip := addr.IP
-				port, err := strconv.Atoi(parts[1])
-				if err != nil {
-					return nil, NewContextualError("Static host address could not be parsed", m{"vpnIp": vpnIp}, err)
-				}
-				lightHouse.AddRemote(ip2int(vpnIp), NewUDPAddr(ip2int(ip), uint16(port)), true)
+				lightHouse.AddRemote(ip2int(vpnIp), NewUDPAddr(ip, port), true)
+			} else {
+				return nil, NewContextualError("Static host address could not be parsed", m{"vpnIp": vpnIp}, err)
 			}
 		}
 	}

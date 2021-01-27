@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/rcrowley/go-metrics"
+	"github.com/sirupsen/logrus"
 	"github.com/slackhq/nebula/cert"
 )
 
@@ -41,7 +42,7 @@ type LightHouse struct {
 	staticList  map[uint32]struct{}
 	lighthouses map[uint32]struct{}
 	interval    int
-	nebulaPort  int
+	nebulaPort  uint32 // 32 bits because protobuf does not have a uint16
 	punchBack   bool
 	punchDelay  time.Duration
 
@@ -54,7 +55,7 @@ type EncWriter interface {
 	SendMessageToAll(t NebulaMessageType, st NebulaMessageSubType, vpnIp uint32, p, nb, out []byte)
 }
 
-func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort int, pc *udpConn, punchBack bool, punchDelay time.Duration, metricsEnabled bool) *LightHouse {
+func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort uint32, pc *udpConn, punchBack bool, punchDelay time.Duration, metricsEnabled bool) *LightHouse {
 	h := LightHouse{
 		amLighthouse: amLighthouse,
 		myIp:         myIp,
@@ -179,7 +180,7 @@ func (lh *LightHouse) AddRemote(vpnIP uint32, toIp *udpAddr, static bool) {
 		}
 	}
 
-	allow := lh.remoteAllowList.Allow(udp2ipInt(toIp))
+	allow := lh.remoteAllowList.Allow(toIp.IP)
 	l.WithField("remoteIp", toIp).WithField("allow", allow).Debug("remoteAllowList.Allow")
 	if !allow {
 		return
@@ -208,12 +209,6 @@ func (lh *LightHouse) IsLighthouseIP(vpnIP uint32) bool {
 	return false
 }
 
-// Quick generators for protobuf
-
-func NewLhQueryByIpString(VpnIp string) *NebulaMeta {
-	return NewLhQueryByInt(ip2int(net.ParseIP(VpnIp)))
-}
-
 func NewLhQueryByInt(VpnIp uint32) *NebulaMeta {
 	return &NebulaMeta{
 		Type: NebulaMeta_HostQuery,
@@ -223,17 +218,31 @@ func NewLhQueryByInt(VpnIp uint32) *NebulaMeta {
 	}
 }
 
-func NewLhWhoami() *NebulaMeta {
-	return &NebulaMeta{
-		Type:    NebulaMeta_HostWhoami,
-		Details: &NebulaMetaDetails{},
+func NewIpAndPort(ip net.IP, port uint32) IpAndPort {
+	ipp := IpAndPort{Port: port}
+
+	if ipv4 := ip.To4(); ipv4 != nil {
+		ipp.IpAny = &IpAndPort_Ip{Ip: ip2int(ip)}
+
+	} else {
+		ipc := make([]byte, len(ip))
+		copy(ipc, ip)
+		ipp.IpAny = &IpAndPort_Ipv6{Ipv6: ipc}
 	}
+
+	return ipp
 }
 
-// End Quick generators for protobuf
-
 func NewIpAndPortFromUDPAddr(addr udpAddr) IpAndPort {
-	return IpAndPort{Ip: udp2ipInt(&addr), Port: uint32(addr.Port)}
+	return NewIpAndPort(addr.IP, uint32(addr.Port))
+}
+
+func NewUDPAddrFromLH(ipp *IpAndPort) *udpAddr {
+	if ipv6 := ipp.GetIpv6(); len(ipv6) > 0 {
+		return NewUDPAddr(ipv6, uint16(ipp.Port))
+	}
+
+	return NewUDPAddr(int2ip(ipp.GetIp()), uint16(ipp.Port))
 }
 
 func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
@@ -242,20 +251,21 @@ func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
 	}
 
 	for {
-		ipp := []*IpAndPort{}
+		var ipps []*IpAndPort
 
 		for _, e := range *localIps(lh.localAllowList) {
 			// Only add IPs that aren't my VPN/tun IP
 			if ip2int(e) != lh.myIp {
-				ipp = append(ipp, &IpAndPort{Ip: ip2int(e), Port: uint32(lh.nebulaPort)})
-				//fmt.Println(e)
+				ipp := NewIpAndPort(e, lh.nebulaPort)
+				ipps = append(ipps, &ipp)
+				fmt.Println("GOOD", e)
 			}
 		}
 		m := &NebulaMeta{
 			Type: NebulaMeta_HostUpdateNotification,
 			Details: &NebulaMetaDetails{
 				VpnIp:      lh.myIp,
-				IpAndPorts: ipp,
+				IpAndPorts: ipps,
 			},
 		}
 
@@ -402,11 +412,12 @@ func (lhh *LightHouseHandler) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []by
 		if !lh.IsLighthouseIP(vpnIp) {
 			return
 		}
+
 		for _, a := range n.Details.IpAndPorts {
-			//first := n.Details.IpAndPorts[0]
-			ans := NewUDPAddr(a.Ip, uint16(a.Port))
+			ans := NewUDPAddrFromLH(a)
 			lh.AddRemote(n.Details.VpnIp, ans, false)
 		}
+
 		// Non-blocking attempt to trigger, skip if it would block
 		select {
 		case lh.handshakeTrigger <- n.Details.VpnIp:
@@ -419,10 +430,12 @@ func (lhh *LightHouseHandler) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []by
 			l.WithField("vpnIp", IntIp(vpnIp)).WithField("answer", IntIp(n.Details.VpnIp)).Debugln("Host sent invalid update")
 			return
 		}
+
 		for _, a := range n.Details.IpAndPorts {
-			ans := NewUDPAddr(a.Ip, uint16(a.Port))
+			ans := NewUDPAddrFromLH(a)
 			lh.AddRemote(n.Details.VpnIp, ans, false)
 		}
+
 	case NebulaMeta_HostMovedNotification:
 	case NebulaMeta_HostPunchNotification:
 		if !lh.IsLighthouseIP(vpnIp) {
@@ -431,15 +444,21 @@ func (lhh *LightHouseHandler) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []by
 
 		empty := []byte{0}
 		for _, a := range n.Details.IpAndPorts {
-			vpnPeer := NewUDPAddr(a.Ip, uint16(a.Port))
+			//TODO: only hole punch on ipv4 addresses?
+			vpnPeer := NewUDPAddrFromLH(a)
 			go func() {
 				time.Sleep(lh.punchDelay)
 				lh.metricHolepunchTx.Inc(1)
 				lh.punchConn.WriteTo(empty, vpnPeer)
 
 			}()
-			l.Debugf("Punching %s on %d for %s", IntIp(a.Ip), a.Port, IntIp(n.Details.VpnIp))
+
+			if l.Level >= logrus.DebugLevel {
+				//TODO: lacking the ip we are actually punching on, old: l.Debugf("Punching %s on %d for %s", IntIp(a.Ip), a.Port, IntIp(n.Details.VpnIp))
+				l.Debugf("Punching on %d for %s", a.Port, IntIp(n.Details.VpnIp))
+			}
 		}
+
 		// This sends a nebula test packet to the host trying to contact us. In the case
 		// of a double nat or other difficult scenario, this may help establish
 		// a tunnel.

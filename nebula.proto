@@ -22,17 +22,18 @@ message NebulaMeta {
 
 
 message NebulaMetaDetails {
-
   uint32 VpnIp = 1;
   repeated IpAndPort IpAndPorts = 2;
   uint32 counter = 3;
 }
 
 message IpAndPort {
-  uint32 Ip = 1;
+  oneof IpAny {
+    uint32 Ip = 1; // This field is deprecated as of v1.4, use IpAny instead
+    bytes Ipv6 = 3;
+  }
   uint32 Port = 2;
 }
-
 
 message NebulaPing {
   enum MessageType {

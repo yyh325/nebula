@@ -235,7 +235,7 @@ func (c *Config) GetAllowList(k string, allowInterfaces bool) (*AllowList, error
 		return nil, fmt.Errorf("config `%s` has invalid type: %T", k, r)
 	}
 
-	tree := NewCIDRTree()
+	tree := NewCIDR6Tree()
 	var nameRules []AllowListNameRule
 
 	firstValue := true
