@@ -336,7 +336,7 @@ type isIpAndPort_IpAny interface {
 }
 
 type IpAndPort_Ip struct {
-	Ip uint32 `protobuf:"varint,1,opt,name=Ip,proto3,oneof"` // This field is deprecated as of v1.4, use IpAny instead
+	Ip uint32 `protobuf:"varint,1,opt,name=Ip,proto3,oneof"` // ipv4 only addresses here
 }
 
 type IpAndPort_Ipv6 struct {

@@ -258,7 +258,6 @@ func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
 			if ip2int(e) != lh.myIp {
 				ipp := NewIpAndPort(e, lh.nebulaPort)
 				ipps = append(ipps, &ipp)
-				fmt.Println("GOOD", e)
 			}
 		}
 		m := &NebulaMeta{

@@ -251,16 +251,6 @@ func (u *udpConn) reloadConfig(c *Config) {
 	}
 }
 
-//TODO: This is now meaningless
-//func udp2ip(addr *udpAddr) net.IP {
-//	return int2ip(addr.IP)
-//}
-
-//TODO: Total refactor of uses
-//func udp2ipInt(addr *udpAddr) uint32 {
-//	return addr.IP
-//}
-
 func hostDidRoam(addr *udpAddr, newaddr *udpAddr) bool {
 	return !addr.Equals(newaddr)
 }

@@ -29,7 +29,7 @@ message NebulaMetaDetails {
 
 message IpAndPort {
   oneof IpAny {
-    uint32 Ip = 1; // This field is deprecated as of v1.4, use IpAny instead
+    uint32 Ip = 1; // ipv4 only addresses here
     bytes Ipv6 = 3;
   }
   uint32 Port = 2;

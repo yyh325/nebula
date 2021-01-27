@@ -13,7 +13,6 @@ func HandleIncomingHandshake(f *Interface, addr *udpAddr, packet []byte, h *Head
 	//	return
 	//}
 
-	//TODO: CIDRTree support for ipv6 again
 	if !f.lightHouse.remoteAllowList.Allow(addr.IP) {
 		l.WithField("udpAddr", addr).Debug("lighthouse.remote_allow_list denied incoming handshake")
 		return
