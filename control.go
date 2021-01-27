@@ -22,7 +22,7 @@ type ControlHostInfo struct {
 	VpnIP          net.IP                  `json:"vpnIp"`
 	LocalIndex     uint32                  `json:"localIndex"`
 	RemoteIndex    uint32                  `json:"remoteIndex"`
-	RemoteAddrs    []udpAddr               `json:"remoteAddrs"`
+	RemoteAddrs    []*udpAddr              `json:"remoteAddrs"`
 	CachedPackets  int                     `json:"cachedPackets"`
 	Cert           *cert.NebulaCertificate `json:"cert"`
 	MessageCounter uint64                  `json:"messageCounter"`
@@ -148,7 +148,7 @@ func copyHostInfo(h *HostInfo) ControlHostInfo {
 		VpnIP:          int2ip(h.hostId),
 		LocalIndex:     h.localIndexId,
 		RemoteIndex:    h.remoteIndexId,
-		RemoteAddrs:    make([]udpAddr, len(addrs), len(addrs)),
+		RemoteAddrs:    make([]*udpAddr, len(addrs), len(addrs)),
 		CachedPackets:  len(h.packetStore),
 		MessageCounter: *h.ConnectionState.messageCounter,
 	}

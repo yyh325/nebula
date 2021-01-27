@@ -41,14 +41,14 @@ func (ua *udpAddr) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m{"ip": ua.IP, "port": ua.Port})
 }
 
-func (ua *udpAddr) Copy() udpAddr {
+func (ua *udpAddr) Copy() *udpAddr {
 	nu := udpAddr{
 		Port: ua.Port,
 		IP:   make(net.IP, len(ua.IP)),
 	}
 
 	copy(nu.IP, ua.IP)
-	return nu
+	return &nu
 }
 
 func parseIPAndPort(s string) (net.IP, uint16, error) {

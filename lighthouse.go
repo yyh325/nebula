@@ -22,7 +22,7 @@ type LightHouse struct {
 	punchConn    *udpConn
 
 	// Local cache of answers from light houses
-	addrMap map[uint32][]udpAddr
+	addrMap map[uint32][]*udpAddr
 
 	// filters remote addresses allowed for each host
 	// - When we are a lighthouse, this filters what addresses we store and
@@ -59,7 +59,7 @@ func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, n
 	h := LightHouse{
 		amLighthouse: amLighthouse,
 		myIp:         myIp,
-		addrMap:      make(map[uint32][]udpAddr),
+		addrMap:      make(map[uint32][]*udpAddr),
 		nebulaPort:   nebulaPort,
 		lighthouses:  make(map[uint32]struct{}),
 		staticList:   make(map[uint32]struct{}),
@@ -107,7 +107,7 @@ func (lh *LightHouse) ValidateLHStaticEntries() error {
 	return nil
 }
 
-func (lh *LightHouse) Query(ip uint32, f EncWriter) ([]udpAddr, error) {
+func (lh *LightHouse) Query(ip uint32, f EncWriter) ([]*udpAddr, error) {
 	if !lh.IsLighthouseIP(ip) {
 		lh.QueryServer(ip, f)
 	}
@@ -140,7 +140,7 @@ func (lh *LightHouse) QueryServer(ip uint32, f EncWriter) {
 }
 
 // Query our local lighthouse cached results
-func (lh *LightHouse) QueryCache(ip uint32) []udpAddr {
+func (lh *LightHouse) QueryCache(ip uint32) []*udpAddr {
 	lh.RLock()
 	if v, ok := lh.addrMap[ip]; ok {
 		lh.RUnlock()
@@ -190,7 +190,7 @@ func (lh *LightHouse) AddRemote(vpnIP uint32, toIp *udpAddr, static bool) {
 	if static {
 		lh.staticList[vpnIP] = struct{}{}
 	}
-	lh.addrMap[vpnIP] = append(lh.addrMap[vpnIP], *toIp)
+	lh.addrMap[vpnIP] = append(lh.addrMap[vpnIP], toIp.Copy())
 	lh.Unlock()
 }
 
@@ -233,7 +233,7 @@ func NewIpAndPort(ip net.IP, port uint32) IpAndPort {
 	return ipp
 }
 
-func NewIpAndPortFromUDPAddr(addr udpAddr) IpAndPort {
+func NewIpAndPortFromUDPAddr(addr *udpAddr) IpAndPort {
 	return NewIpAndPort(addr.IP, uint32(addr.Port))
 }
 
@@ -242,7 +242,11 @@ func NewUDPAddrFromLH(ipp *IpAndPort) *udpAddr {
 		return NewUDPAddr(ipv6, uint16(ipp.Port))
 	}
 
-	return NewUDPAddr(int2ip(ipp.GetIp()), uint16(ipp.Port))
+	ip := ipp.GetIp()
+	return NewUDPAddr(
+		net.IPv4(byte(ip&0xff000000>>24), byte(ip&0x00ff0000>>16), byte(ip&0x0000ff00>>8), byte(ip&0x000000ff)),
+		uint16(ipp.Port),
+	)
 }
 
 func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
@@ -334,7 +338,7 @@ func (lhh *LightHouseHandler) resizeIpAndPorts(n int) {
 	lhh.iapp = lhh.iapp[:n]
 }
 
-func (lhh *LightHouseHandler) setIpAndPortsFromNetIps(ips []udpAddr) []*IpAndPort {
+func (lhh *LightHouseHandler) setIpAndPortsFromNetIps(ips []*udpAddr) []*IpAndPort {
 	lhh.resizeIpAndPorts(len(ips))
 	for i, e := range ips {
 		lhh.iap[i] = NewIpAndPortFromUDPAddr(e)

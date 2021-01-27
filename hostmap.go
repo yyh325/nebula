@@ -285,7 +285,7 @@ func (hm *HostMap) AddRemote(vpnIp uint32, remote *udpAddr) *HostInfo {
 	hm.Lock()
 	i, v := hm.Hosts[vpnIp]
 	if v {
-		i.AddRemote(*remote)
+		i.AddRemote(remote)
 	} else {
 		i = &HostInfo{
 			Remotes:         []*HostInfoDest{NewHostInfoDest(remote)},
@@ -616,8 +616,7 @@ func (i *HostInfo) GetCert() *cert.NebulaCertificate {
 	return nil
 }
 
-func (i *HostInfo) AddRemote(r udpAddr) *udpAddr {
-	remote := &r
+func (i *HostInfo) AddRemote(remote *udpAddr) *udpAddr {
 	//add := true
 	for _, r := range i.Remotes {
 		if r.addr.Equals(remote) {
@@ -629,12 +628,13 @@ func (i *HostInfo) AddRemote(r udpAddr) *udpAddr {
 	if len(i.Remotes) > MaxRemotes {
 		i.Remotes = i.Remotes[len(i.Remotes)-MaxRemotes:]
 	}
-	i.Remotes = append(i.Remotes, NewHostInfoDest(remote))
-	return remote
+	r := NewHostInfoDest(remote)
+	i.Remotes = append(i.Remotes, r)
+	return r.addr
 	//l.Debugf("Added remote %s for vpn ip", remote)
 }
 
-func (i *HostInfo) SetRemote(remote udpAddr) {
+func (i *HostInfo) SetRemote(remote *udpAddr) {
 	i.remote = i.AddRemote(remote)
 }
 
@@ -692,7 +692,7 @@ func (i *HostInfo) logger() *logrus.Entry {
 
 func NewHostInfoDest(addr *udpAddr) *HostInfoDest {
 	i := &HostInfoDest{
-		addr: addr,
+		addr: addr.Copy(),
 	}
 	return i
 }

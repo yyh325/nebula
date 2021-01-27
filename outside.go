@@ -160,7 +160,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr *udpAddr) {
 		hostinfo.lastRoam = time.Now()
 		remoteCopy := *hostinfo.remote
 		hostinfo.lastRoamRemote = &remoteCopy
-		hostinfo.SetRemote(*addr)
+		hostinfo.SetRemote(addr)
 		if f.lightHouse.amLighthouse {
 			f.lightHouse.AddRemote(hostinfo.hostId, addr, false)
 		}

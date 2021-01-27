@@ -36,6 +36,9 @@ func NewListener(ip string, port int, multi bool) (*udpConn, error) {
 	var lip [16]byte
 	copy(lip[:], net.ParseIP(ip))
 
+	//TODO: may be needed to enable ipv6 packets in addition to ipv4
+	//syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IPV6_V6ONLY, 0)
+
 	if multi {
 		if err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
 			return nil, fmt.Errorf("unable to set SO_REUSEPORT: %s", err)
@@ -92,11 +95,9 @@ func (u *udpConn) LocalAddr() (*udpAddr, error) {
 
 	addr := &udpAddr{}
 	if rsa.Addr.Family == unix.AF_INET {
+		pp := (*unix.RawSockaddrInet4)(unsafe.Pointer(&rsa))
 		addr.Port = uint16(rsa.Addr.Data[0])<<8 + uint16(rsa.Addr.Data[1])
-		//copy(addr.IP, rsa.Addr.Data[0:4])
-		for i, v := range rsa.Addr.Data {
-			addr.IP[i] = byte(v)
-		}
+		copy(addr.IP, pp.Addr[:])
 
 	} else if rsa.Addr.Family == unix.AF_INET6 {
 		//TODO: this cast sucks and we can do better
@@ -108,6 +109,9 @@ func (u *udpConn) LocalAddr() (*udpAddr, error) {
 		addr.Port = 0
 		addr.IP = []byte{}
 	}
+
+	//TODO: Just use this instead?
+	//a, b := unix.Getsockname(u.sysFd)
 
 	return addr, nil
 }
@@ -146,7 +150,6 @@ func (u *udpConn) ListenOut(f *Interface, q int) {
 }
 
 func (u *udpConn) ReadSingle(msgs []rawMessage) (int, error) {
-
 	for {
 		n, _, err := unix.Syscall6(
 			unix.SYS_RECVMSG,
@@ -188,14 +191,12 @@ func (u *udpConn) ReadMulti(msgs []rawMessage) (int, error) {
 }
 
 func (u *udpConn) WriteTo(b []byte, addr *udpAddr) error {
-	var rsa unix.RawSockaddrInet6
 
-	//TODO: sometimes addr is nil!
+	var rsa unix.RawSockaddrInet6
 	rsa.Family = unix.AF_INET6
 	p := (*[2]byte)(unsafe.Pointer(&rsa.Port))
 	p[0] = byte(addr.Port >> 8)
 	p[1] = byte(addr.Port)
-
 	copy(rsa.Addr[:], addr.IP)
 
 	for {

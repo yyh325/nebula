@@ -7,7 +7,6 @@ package nebula
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -83,10 +82,6 @@ func (u *udpConn) ListenOut(f *Interface, q int) {
 
 func udp2ip(addr *udpAddr) net.IP {
 	return addr.IP
-}
-
-func udp2ipInt(addr *udpAddr) uint32 {
-	return binary.BigEndian.Uint32(addr.IP.To4())
 }
 
 func hostDidRoam(addr *udpAddr, newaddr *udpAddr) bool {

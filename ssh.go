@@ -561,7 +561,7 @@ func sshCreateTunnel(ifce *Interface, fs interface{}, a []string, w sshd.StringW
 
 	hostInfo = ifce.handshakeManager.AddVpnIP(vpnIp)
 	if addr != nil {
-		hostInfo.SetRemote(*addr)
+		hostInfo.SetRemote(addr)
 	}
 	ifce.getOrHandshake(vpnIp)
 
@@ -603,7 +603,7 @@ func sshChangeRemote(ifce *Interface, fs interface{}, a []string, w sshd.StringW
 		return w.WriteLine(fmt.Sprintf("Could not find tunnel for vpn ip: %v", a[0]))
 	}
 
-	hostInfo.SetRemote(*addr)
+	hostInfo.SetRemote(addr)
 	return w.WriteLine("Changed")
 }
 
