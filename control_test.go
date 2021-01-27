@@ -83,7 +83,7 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 		VpnIP:          net.IPv4(1, 2, 3, 4).To4(),
 		LocalIndex:     201,
 		RemoteIndex:    200,
-		RemoteAddrs:    []udpAddr{*remote1, *remote2},
+		RemoteAddrs:    []*udpAddr{remote1, remote2},
 		CachedPackets:  0,
 		Cert:           crt.Copy(),
 		MessageCounter: 0,

@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//TODO: Add a test to ensure udpAddr is copied and not reused
+
 func TestOldIPv4Only(t *testing.T) {
 	// This test ensures our new ipv6 enabled LH protobuf IpAndPorts works with the old style to enable backwards compatibility
 	b := []byte{8, 129, 130, 132, 80, 16, 10}
@@ -40,7 +42,7 @@ func TestNewLhQuery(t *testing.T) {
 
 func TestNewipandportfromudpaddr(t *testing.T) {
 	blah := NewUDPAddrFromString("1.2.2.3:12345")
-	meh := NewIpAndPortFromUDPAddr(*blah)
+	meh := NewIpAndPortFromUDPAddr(blah)
 	assert.Equal(t, uint32(16908803), meh.GetIp())
 	assert.Equal(t, uint32(12345), meh.Port)
 }
@@ -48,7 +50,7 @@ func TestNewipandportfromudpaddr(t *testing.T) {
 func TestSetipandportsfromudpaddrs(t *testing.T) {
 	blah := NewUDPAddrFromString("1.2.2.3:12345")
 	blah2 := NewUDPAddrFromString("9.9.9.9:47828")
-	group := []udpAddr{*blah, *blah2}
+	group := []*udpAddr{blah, blah2}
 	var lh *LightHouse
 	lhh := lh.NewRequestHandler()
 	result := lhh.setIpAndPortsFromNetIps(group)
@@ -92,11 +94,11 @@ func BenchmarkLighthouseHandleRequest(b *testing.B) {
 
 	hAddr := NewUDPAddrFromString("4.5.6.7:12345")
 	hAddr2 := NewUDPAddrFromString("4.5.6.7:12346")
-	lh.addrMap[3] = []udpAddr{*hAddr, *hAddr2}
+	lh.addrMap[3] = []*udpAddr{hAddr, hAddr2}
 
 	rAddr := NewUDPAddrFromString("1.2.2.3:12345")
 	rAddr2 := NewUDPAddrFromString("1.2.2.3:12346")
-	lh.addrMap[2] = []udpAddr{*rAddr, *rAddr2}
+	lh.addrMap[2] = []*udpAddr{rAddr, rAddr2}
 
 	mw := &mockEncWriter{}
 
