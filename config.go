@@ -225,6 +225,7 @@ func (c *Config) GetDuration(k string, d time.Duration) time.Duration {
 }
 
 func (c *Config) GetAllowList(k string, allowInterfaces bool) (*AllowList, error) {
+	//TODO: this needs to set up ipv6 support
 	r := c.Get(k)
 	if r == nil {
 		return nil, nil

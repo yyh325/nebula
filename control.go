@@ -26,7 +26,7 @@ type ControlHostInfo struct {
 	CachedPackets  int                     `json:"cachedPackets"`
 	Cert           *cert.NebulaCertificate `json:"cert"`
 	MessageCounter uint64                  `json:"messageCounter"`
-	CurrentRemote  udpAddr                 `json:"currentRemote"`
+	CurrentRemote  *udpAddr                `json:"currentRemote"`
 }
 
 // Start actually runs nebula, this is a nonblocking call. To block use Control.ShutdownBlock()
@@ -65,6 +65,9 @@ func (c *Control) ShutdownBlock() {
 // RebindUDPServer asks the UDP listener to rebind it's listener. Mainly used on mobile clients when interfaces change
 func (c *Control) RebindUDPServer() {
 	_ = c.f.outside.Rebind()
+
+	// Trigger a lighthouse update, useful for mobile clients that should have an update interval of 0
+	c.f.lightHouse.SendUpdate(c.f)
 }
 
 // ListHostmap returns details about the actual or pending (handshaking) hostmap
@@ -158,7 +161,7 @@ func copyHostInfo(h *HostInfo) ControlHostInfo {
 	}
 
 	if h.remote != nil {
-		chi.CurrentRemote = *h.remote
+		chi.CurrentRemote = h.remote.Copy()
 	}
 
 	for i, addr := range addrs {
