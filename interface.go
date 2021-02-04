@@ -61,8 +61,8 @@ type Interface struct {
 	routines           int
 
 	// rebindCount is used to decide if an active tunnel should trigger a punch notification through a lighthouse
-	rebindCount        int8
-	version            string
+	rebindCount int8
+	version     string
 
 	writers []*udpConn
 	readers []io.ReadWriteCloser
