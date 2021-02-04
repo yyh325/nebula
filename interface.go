@@ -59,6 +59,9 @@ type Interface struct {
 	dropMulticast      bool
 	udpBatchSize       int
 	routines           int
+
+	// rebindCount is used to decide if an active tunnel should trigger a punch notification through a lighthouse
+	rebindCount        int8
 	version            string
 
 	writers []*udpConn
