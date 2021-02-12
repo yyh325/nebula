@@ -37,7 +37,7 @@ func (c *Control) Start() {
 // Stop signals nebula to shutdown, returns after the shutdown is complete
 func (c *Control) Stop() {
 	//TODO: stop tun and udp routines, the lock on hostMap effectively does that though
-	c.CloseAllTunnels()
+	c.CloseAllTunnels(false)
 	c.l.Info("Goodbye")
 }
 
@@ -139,18 +139,27 @@ func (c *Control) CloseTunnel(vpnIP uint32, localOnly bool) bool {
 	return true
 }
 
-// CloseAllTunnels is just like CloseTunnel except it goes through and shuts them all down
-func (c *Control) CloseAllTunnels() {
+// CloseAllTunnels is just like CloseTunnel except it goes through and shuts them all down, optionally you can avoid shutting down lighthouse tunnels
+// the int returned is a count of tunnels closed
+func (c *Control) CloseAllTunnels(excludeLighthouses bool) (closed int) {
 	//TODO: this is probably better as a function in ConnectionManager or HostMap directly
 	c.f.hostMap.Lock()
 	for _, h := range c.f.hostMap.Hosts {
+		if excludeLighthouses {
+			if _, ok := c.f.lightHouse.lighthouses[h.hostId]; ok {
+				continue
+			}
+		}
+
 		if h.ConnectionState.ready {
 			c.f.send(closeTunnel, 0, h.ConnectionState, h, h.remote, []byte{}, make([]byte, 12, 12), make([]byte, mtu))
 			c.l.WithField("vpnIp", IntIp(h.hostId)).WithField("udpAddr", h.remote).
 				Debug("Sending close tunnel message")
+			closed++
 		}
 	}
 	c.f.hostMap.Unlock()
+	return
 }
 
 func copyHostInfo(h *HostInfo) ControlHostInfo {
