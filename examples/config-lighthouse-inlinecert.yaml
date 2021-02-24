@@ -1,0 +1,39 @@
+# This is the nebula lighthouse example configuration file.
+# For a complete list of options and settings, see https://www.defined.net/nebula/config/ and see the full config.yml example.
+#
+
+pki:
+  ca: |
+    -----BEGIN NEBULA CERTIFICATE-----
+    THIS_IS_NOT_A_REAL_CERTIFICATE+THIS_IS_NOT_A_REAL_CERTIFICATE+TH
+    IS_IS_NOT_A_REAL_CERTIFICATE+THIS_IS_NOT_A_REAL_CERTIFICATE+THIS
+    THIS_IS_NOT_A_REAL_CERTIFICATE+THIS_IS_+
+    -----END NEBULA CERTIFICATE-----
+  cert: /etc/nebula/host.crt
+  key: /etc/nebula/host.key
+
+listen:
+  host: 0.0.0.0
+  port: 4242
+
+tun:
+  dev: nebula1
+
+firewall:
+  outbound:
+    # Allow all outbound traffic from this node
+    - port: any
+      proto: any
+      host: any
+
+  inbound:
+    # Allow icmp between any nebula hosts
+    - port: any
+      proto: icmp
+      host: any
+
+lighthouse:
+  am_lighthouse: yes
+
+punchy:
+  punch: true
